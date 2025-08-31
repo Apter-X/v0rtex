@@ -30,33 +30,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Extract version from git tag
-      - name: Extract version from tag
-        id: version
-        run: |
-          # Remove 'v' prefix from tag (e.g., v0.1.1-alpha.1 -> 0.1.1-alpha.1)
-          VERSION=${GITHUB_REF_NAME#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extracted version: $VERSION"
-
-      # Update package version in pyproject.toml
-      - name: Update package version
-        run: |
-          # Install tomlkit for safe TOML editing
-          pip install tomlkit
-          
-          # Update version in pyproject.toml
-          python -c "
-          import tomlkit
-          with open('pyproject.toml', 'r') as f:
-              data = tomlkit.load(f)
-          data['project']['version'] = '${{ steps.version.outputs.version }}'
-          with open('pyproject.toml', 'w') as f:
-              tomlkit.dump(data, f)
-          "
-          
-          echo "Updated pyproject.toml version to ${{ steps.version.outputs.version }}"
-
       # Generate changelog using git log
       - name: Generate changelog
         id: changelog
@@ -87,14 +60,10 @@ jobs:
         run: |
           python -m build
           echo "Package built successfully"
-          
-          # Verify the built package has the correct version
-          ls -la dist/
-          echo "Built package version: ${{ steps.version.outputs.version }}"
 
-      # Publish to TestPyPI (for alpha, beta, rc versions)
+      # Publish to PyPI (TestPyPI first for safety)
       - name: Publish to TestPyPI
-        if: contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc')
+        if: startsWith(github.ref_name, 'v') && contains(github.ref_name, '-alpha')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
@@ -104,7 +73,7 @@ jobs:
 
       # Publish to PyPI (Production)
       - name: Publish to PyPI
-        if: startsWith(github.ref_name, 'v') && not(contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc'))
+        if: startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-alpha') && !contains(github.ref_name, '-beta') && !contains(github.ref_name, '-rc')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
