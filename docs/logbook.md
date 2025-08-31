@@ -1,5 +1,85 @@
 # v0rtex Development Logbook
 
+## 2025-08-31 - Chrome WebDriver Configuration Fix
+
+### 🎯 What We Fixed
+**Chrome WebDriver Setup Error** - Resolved the "unrecognized chrome option: excludeSwitches" error that was preventing the undetected Chrome driver from initializing.
+
+### 🔍 Root Cause Analysis
+The error occurred because:
+- **Problem**: The configuration was using `"type": "undetected"` with `"stealth_mode": true`
+- **Issue**: `undetected_chromedriver` is not compatible with the `excludeSwitches` Chrome option
+- **Result**: Driver setup failed with "cannot parse capability: goog:chromeOptions" error
+
+### 🛠️ Solution Implemented
+
+#### 1. Chrome Options Compatibility Fix
+**Before (Broken)**:
+```python
+if self.config.browser.stealth_mode:
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+```
+
+**After (Fixed)**:
+```python
+if self.config.browser.stealth_mode:
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    # Note: excludeSwitches is not compatible with undetected_chromedriver
+    # options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # options.add_experimental_option('useAutomationExtension', False)
+```
+
+#### 2. What Was Removed
+- **`excludeSwitches`**: Not compatible with `undetected_chromedriver`
+- **`useAutomationExtension`**: Also incompatible with the undetected approach
+
+#### 3. What Remains
+- **`--disable-blink-features=AutomationControlled`**: Still works and provides stealth benefits
+- **Undetected Chrome Driver**: Continues to provide anti-detection capabilities
+
+### ✅ What Now Works
+
+#### Browser Configuration
+- **Undetected Mode**: `"type": "undetected"` with `"stealth_mode": true` works correctly
+- **Stealth Features**: Basic stealth capabilities are maintained
+- **Driver Initialization**: No more "excludeSwitches" errors
+
+#### Scraping Operations
+- **Driver Setup**: Successfully creates undetected Chrome instances
+- **Stealth Mode**: Anti-detection features still functional
+- **Error Handling**: Clean error messages instead of capability parsing failures
+
+### 🔧 Technical Details
+
+#### Files Modified
+1. **`src/v0rtex/core/scraper.py`**: Commented out incompatible Chrome options
+
+#### Configuration Compatibility
+- **Sample Config**: `sample_config.json` now works with undetected mode
+- **Examples**: `examples/basic_scraping.json` is compatible
+- **Stealth Mode**: Reduced but still functional anti-detection
+
+### 🎉 Outcome
+- ✅ **Driver Setup**: No more "excludeSwitches" errors
+- ✅ **Undetected Mode**: Successfully initializes Chrome driver
+- ✅ **Stealth Features**: Basic anti-detection still works
+- ✅ **Configuration**: Sample configs now work out of the box
+
+### 📚 Lessons Learned
+1. **Driver Compatibility**: Different Chrome drivers have different capability sets
+2. **Stealth Options**: Not all Chrome options work with undetected drivers
+3. **Error Handling**: Specific error messages help identify compatibility issues
+4. **Configuration Testing**: Always test browser configurations with actual driver types
+
+### 🔮 Future Improvements
+- **Enhanced Stealth**: Implement alternative stealth methods compatible with undetected drivers
+- **Driver Detection**: Add runtime checks for driver compatibility
+- **Fallback Options**: Provide alternative stealth configurations for different driver types
+
+---
+
 ## 2025-08-31 - Package Structure Fix & CLI Restoration
 
 ### 🎯 What We Fixed

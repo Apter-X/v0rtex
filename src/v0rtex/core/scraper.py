@@ -104,9 +104,14 @@ class V0rtexScraper:
         """Setup web driver based on configuration."""
         try:
             if self.config.browser.type.value == "undetected":
-                options = uc.ChromeOptions()
+                # Note: undetected_chromedriver v3.5.5 has compatibility issues with newer Chrome versions
+                # Falling back to standard Chrome with enhanced stealth options
+                logger.warning("undetected mode has compatibility issues, using standard Chrome with stealth")
+                
+                options = ChromeOptions()
                 options.add_argument("--no-sandbox")
                 options.add_argument("--disable-dev-shm-usage")
+                options.add_argument("--disable-blink-features=AutomationControlled")
                 
                 if self.config.browser.headless:
                     options.add_argument("--headless")
@@ -126,11 +131,10 @@ class V0rtexScraper:
                 
                 # Add stealth options
                 if self.config.browser.stealth_mode:
-                    options.add_argument("--disable-blink-features=AutomationControlled")
                     options.add_experimental_option("excludeSwitches", ["enable-automation"])
                     options.add_experimental_option('useAutomationExtension', False)
                 
-                self.driver = uc.Chrome(options=options)
+                self.driver = webdriver.Chrome(options=options)
                 
                 # Execute stealth script
                 if self.config.browser.stealth_mode:
