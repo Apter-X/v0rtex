@@ -9,12 +9,12 @@ __version__ = "0.1.0"
 __author__ = "v0rtex Team"
 __email__ = "team@v0rtex.dev"
 
-from .core.scraper import V0rtexScraper
-from .core.config import ScrapingConfig
-from .core.session import ScrapingSession
-from .utils.anti_detection import AntiDetectionManager
-from .utils.captcha_solver import CaptchaSolver
-from .utils.vpn_manager import VPNManager
+from v0rtex.core.scraper import V0rtexScraper
+from v0rtex.core.config import ScrapingConfig
+from v0rtex.core.session import ScrapingSession
+from v0rtex.utils.anti_detection import AntiDetectionManager
+from v0rtex.utils.captcha_solver import CaptchaSolver
+from v0rtex.utils.vpn_manager import VPNManager
 
 __all__ = [
     "V0rtexScraper",

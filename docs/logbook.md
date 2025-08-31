@@ -1,5 +1,100 @@
 # v0rtex Development Logbook
 
+## 2025-08-31 - Package Structure Fix & CLI Restoration
+
+### 🎯 What We Fixed
+**Package Import Issues** - Resolved the "ModuleNotFoundError: No module named 'src'" error that prevented the CLI from working after PyPI installation.
+
+### 🔍 Root Cause Analysis
+The original package structure had a fundamental flaw:
+- **Problem**: The `pyproject.toml` used `[tool.setuptools.package-dir] "" = "src"` which mapped the root package to the `src` directory
+- **Issue**: This created a mismatch where Python expected `v0rtex` to be a subdirectory of `src`, but the actual package files were directly in `src`
+- **Result**: When the package was installed, the entry point couldn't resolve imports like `from v0rtex.core.scraper import V0rtexScraper`
+
+### 🛠️ Solution Implemented
+
+#### 1. Package Structure Restructuring
+**Before (Broken)**:
+```
+src/
+├── __init__.py      # This was the v0rtex package
+├── cli.py
+├── core/
+└── utils/
+```
+
+**After (Fixed)**:
+```
+src/
+└── v0rtex/          # Now this is the v0rtex package
+    ├── __init__.py
+    ├── cli.py
+    ├── core/
+    └── utils/
+```
+
+#### 2. Import Statement Updates
+- **Changed**: All relative imports (`from .core.scraper`) to absolute imports (`from v0rtex.core.scraper`)
+- **Updated**: `src/__init__.py`, `src/cli.py`, and `src/core/scraper.py`
+- **Result**: Consistent import structure that works both in development and when installed
+
+#### 3. Entry Point Configuration
+- **Fixed**: `pyproject.toml` entry point configuration using `[project.entry-points."console_scripts"]`
+- **Result**: Proper CLI command generation (`v0rtex` command)
+
+### ✅ What Now Works
+
+#### CLI Commands
+```bash
+# Main help
+v0rtex --help
+
+# Initialize sample configuration
+v0rtex init -o config.json
+
+# Run scraper
+v0rtex run -c config.json
+
+# Run with multiple URLs
+v0rtex run -c config.json -u "https://example1.com" -u "https://example2.com"
+
+# Verbose logging
+v0rtex run -c config.json -v
+```
+
+#### Package Installation
+- **Development**: `pip install -e .` works correctly
+- **Distribution**: Package can now be built and distributed via PyPI
+- **CLI**: `v0rtex` command is properly installed and functional
+
+### 🔧 Technical Details
+
+#### Files Modified
+1. **`pyproject.toml`**: Fixed entry point configuration
+2. **`src/cli.py`**: Updated imports from relative to absolute
+3. **`src/__init__.py`**: Updated imports from relative to absolute  
+4. **`src/core/scraper.py`**: Updated imports from relative to absolute
+5. **`src/__main__.py`**: Created proper module entry point
+
+#### Package Structure
+- **Source Layout**: `src/v0rtex/` contains the actual package
+- **Installation**: Editable install correctly maps `src/v0rtex/` to `v0rtex` package
+- **Imports**: All internal imports use absolute paths (`from v0rtex.core.scraper`)
+
+### 🎉 Outcome
+- ✅ **CLI fully functional**: `v0rtex --help` works perfectly
+- ✅ **Package installs correctly**: Both development and production installs work
+- ✅ **Imports resolved**: No more "ModuleNotFoundError" issues
+- ✅ **Ready for distribution**: Package can be published to PyPI
+
+### 📚 Lessons Learned
+1. **Package Structure**: The `src/` layout requires careful attention to directory mapping
+2. **Import Strategy**: Absolute imports are more reliable for distributed packages
+3. **Entry Points**: `[project.entry-points."console_scripts"]` is the modern way to define CLI commands
+4. **Testing**: Always test package installation and CLI functionality before distribution
+
+---
+
 ## 2024-01-XX - Project Initialization
 
 ### 🎯 What We Built

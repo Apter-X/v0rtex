@@ -10,8 +10,8 @@ from pathlib import Path
 from loguru import logger
 from typing import Optional
 
-from .core.scraper import V0rtexScraper
-from .core.config import ScrapingConfig
+from v0rtex.core.scraper import V0rtexScraper
+from v0rtex.core.config import ScrapingConfig
 
 
 def setup_logging(verbose: bool = False, log_file: Optional[str] = None):

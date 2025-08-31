@@ -19,11 +19,11 @@ import requests
 import json
 import os
 
-from .config import ScrapingConfig
-from .session import ScrapingSession
-from ..utils.anti_detection import AntiDetectionManager
-from ..utils.captcha_solver import CaptchaSolver
-from ..utils.vpn_manager import VPNManager
+from v0rtex.core.config import ScrapingConfig
+from v0rtex.core.session import ScrapingSession
+from v0rtex.utils.anti_detection import AntiDetectionManager
+from v0rtex.utils.captcha_solver import CaptchaSolver
+from v0rtex.utils.vpn_manager import VPNManager
 
 
 class V0rtexScraper:
@@ -86,7 +86,7 @@ class V0rtexScraper:
                 
                 self.vpn_manager.proxy_providers["config_proxy"] = self.vpn_manager.proxy_providers.get("config_proxy", None)
                 if not self.vpn_manager.proxy_providers.get("config_proxy"):
-                    from ..utils.vpn_manager import ProxyProvider
+                    from v0rtex.utils.vpn_manager import ProxyProvider
                     self.vpn_manager.proxy_providers["config_proxy"] = ProxyProvider("config_proxy", proxy_config)
                 
                 self.vpn_manager.set_proxy("config_proxy")
