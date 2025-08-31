@@ -39,19 +39,15 @@ jobs:
           
           if [ -n "$PREVIOUS_TAG" ]; then
             # Generate changelog from previous tag to current
-            echo "changelog_content<<EOF" >> $GITHUB_OUTPUT
-            echo "## What's Changed" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD --no-merges >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            CHANGELOG="## What's Changed\n\n$(git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..HEAD --no-merges)"
           else
             # First release - show all commits
-            echo "changelog_content<<EOF" >> $GITHUB_OUTPUT
-            echo "## Initial Release" >> $GITHUB_OUTPUT
-            echo "" >> $GITHUB_OUTPUT
-            git log --pretty=format:"- %s (%h)" --no-merges >> $GITHUB_OUTPUT
-            echo "EOF" >> $GITHUB_OUTPUT
+            CHANGELOG="## Initial Release\n\n$(git log --pretty=format:"- %s (%h)" --no-merges)"
           fi
+          
+          # Escape newlines and set output
+          CHANGELOG_ESCAPED=$(echo "$CHANGELOG" | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "changelog_content=$CHANGELOG_ESCAPED" >> $GITHUB_OUTPUT
 
       # Install build dependencies
       - name: Install build dependencies
