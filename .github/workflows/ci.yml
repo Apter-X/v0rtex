@@ -1,0 +1,24 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Add your runtime setup here (examples below)
+      # - uses: actions/setup-node@v4
+      #   with: { node-version: '20' }
+      # - uses: actions/setup-python@v5
+      #   with: { python-version: '3.11' }
+      - name: Install
+        run: |
+          echo "Install dependencies (override in your stack)"
+      - name: Lint
+        run: |
+          echo "Run linter"
+      - name: Test
+        run: |
+          echo "Run tests"
