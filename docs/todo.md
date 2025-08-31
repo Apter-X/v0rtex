@@ -64,6 +64,7 @@
 - [x] Project setup script
 - [x] Development logbook
 - [x] Architecture documentation
+- [x] PyPI publishing guide
 
 ### Testing
 - [x] Configuration module tests
@@ -191,7 +192,7 @@
 - [ ] Docker containerization
 - [ ] Kubernetes deployment support
 - [ ] Cloud service integration
-- [ ] CI/CD pipeline automation
+- [x] CI/CD pipeline automation (PyPI publishing)
 
 ### User Experience
 - [ ] Web-based configuration interface

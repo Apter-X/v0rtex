@@ -125,6 +125,7 @@ v0rtex/
 3. **Additional CAPTCHA Services**: Integrate more CAPTCHA solving services
 4. **Browser Extensions**: Support for browser extension-based scraping
 5. **Distributed Scraping**: Support for distributed scraping across multiple machines
+6. **PyPI Publishing**: Automated package distribution and releases
 
 ### 💡 Technical Decisions
 
@@ -152,3 +153,119 @@ v0rtex/
 **Phase**: Alpha Release  
 
 The project has successfully delivered a comprehensive web scraping framework with advanced anti-detection capabilities. All core features are implemented and tested, ready for initial use and further development.
+
+## 2024-01-XX - PyPI Publishing & CI/CD Automation
+
+### 🎯 What We Added
+**Automated PyPI Publishing** - Complete CI/CD pipeline for building, testing, and publishing Python packages to PyPI with GitHub releases.
+
+### 🚀 New Features Delivered
+
+#### 1. GitHub Actions Release Workflow
+- **Automated Builds**: Python package building with `build` and `twine`
+- **PyPI Publishing**: Automatic publishing to PyPI and TestPyPI
+- **GitHub Releases**: Automated release creation with changelog generation
+- **Artifact Management**: Built packages uploaded as release artifacts
+- **Conditional Publishing**: Smart routing between TestPyPI and production PyPI
+
+#### 2. PyPI Publishing Strategy
+- **TestPyPI**: Alpha, beta, and release candidate versions
+- **Production PyPI**: Stable releases only
+- **Version Tagging**: Semantic versioning with automatic detection
+- **API Token Security**: Secure credential management via GitHub secrets
+
+#### 3. Build Automation
+- **Python 3.11**: Latest stable Python version for builds
+- **Dependency Management**: Automatic installation of build tools
+- **Package Formats**: Both wheel (`.whl`) and source (`.tar.gz`) distributions
+- **Cleanup**: Automatic cleanup of build artifacts
+
+### 🔧 Technical Implementation
+
+#### Workflow Triggers
+- **Version Tags**: `v*.*.*` pattern triggers the workflow
+- **Conditional Logic**: Different PyPI destinations based on version format
+- **Changelog Generation**: Automatic changelog from conventional commits
+
+#### Security Features
+- **GitHub Secrets**: Secure storage of PyPI API tokens
+- **OIDC Support**: Optional OIDC for enhanced security
+- **Permission Scoping**: Minimal required permissions for security
+
+#### Release Process
+1. **Tag Creation**: Developer creates version tag
+2. **Automated Build**: GitHub Actions builds the package
+3. **PyPI Publishing**: Package published to appropriate PyPI instance
+4. **GitHub Release**: Release created with changelog and artifacts
+5. **Artifact Upload**: Built packages attached to release
+
+### 📚 Documentation Added
+- **PyPI Publishing Guide**: Comprehensive setup and usage instructions
+- **Workflow Documentation**: Detailed explanation of automation steps
+- **Troubleshooting Guide**: Common issues and solutions
+- **Security Best Practices**: API token management and security considerations
+
+### 🔐 Setup Requirements
+
+#### GitHub Secrets
+- `PYPI_API_TOKEN`: Production PyPI API token
+- `TEST_PYPI_API_TOKEN`: TestPyPI API token (optional)
+
+#### PyPI Account Setup
+- PyPI account with 2FA enabled
+- API token with appropriate permissions
+- TestPyPI account for pre-release testing
+
+### 🎯 Benefits Delivered
+
+#### For Developers
+- **Automated Releases**: No manual package building or uploading
+- **Consistent Process**: Standardized release workflow
+- **Error Reduction**: Automated validation and testing
+- **Time Savings**: Eliminates manual release tasks
+
+#### For Users
+- **Easy Installation**: Simple `pip install v0rtex`
+- **Reliable Updates**: Automated quality checks
+- **Clear Release Notes**: Automatic changelog generation
+- **Multiple Formats**: Both wheel and source distributions
+
+#### For Project Maintenance
+- **Version Control**: Clear version history and tracking
+- **Quality Assurance**: Automated build and test processes
+- **Documentation**: Always up-to-date release information
+- **Community Trust**: Professional release process
+
+### 🔄 Next Steps
+1. **Test the Workflow**: Create test releases to verify automation
+2. **Monitor PyPI**: Track package downloads and user feedback
+3. **Optimize Builds**: Reduce build time and improve efficiency
+4. **Expand Testing**: Add more comprehensive testing in CI/CD
+5. **User Documentation**: Create user guides and tutorials
+
+### 💡 Technical Decisions
+
+#### Why GitHub Actions?
+- **Integration**: Native GitHub integration
+- **Flexibility**: Customizable workflows and conditions
+- **Security**: Built-in secret management
+- **Cost**: Free for public repositories
+
+#### Why Conditional PyPI Publishing?
+- **Safety**: TestPyPI for pre-releases prevents accidents
+- **User Experience**: Production PyPI only shows stable releases
+- **Testing**: Easy testing of release process
+- **Compliance**: Follows Python packaging best practices
+
+#### Why Automated Changelog?
+- **Consistency**: Standardized release notes format
+- **Accuracy**: Automatic detection of changes
+- **Time Savings**: No manual changelog maintenance
+- **User Experience**: Clear information about what changed
+
+### 🎉 Updated Project Status
+**Status**: ✅ CI/CD Pipeline Complete  
+**Version**: 0.1.0  
+**Phase**: Alpha Release with Automated Publishing  
+
+The project now includes a complete CI/CD pipeline for automated package publishing, making it easy for users to install and for developers to maintain. The release process is fully automated and follows Python packaging best practices.

@@ -20,23 +20,53 @@ jobs:
         with:
           fetch-depth: 0   # Important to fetch full history for changelog tools
 
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
       - name: Set up Git identity
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Example: generate changelog with conventional commits (optional)
+      # Generate changelog with conventional commits
       - name: Generate changelog
         id: changelog
         uses: mikeal/conventional-changelog-action@v4
         with:
           preset: angular
 
-      # Build / package step (customize per project)
-      - name: Build project
+      # Install build dependencies
+      - name: Install build dependencies
         run: |
-          echo "Add your build steps here"
-          # e.g. make build / npm run build / etc.
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      # Build the Python package
+      - name: Build package
+        run: |
+          python -m build
+          echo "Package built successfully"
+
+      # Publish to PyPI (TestPyPI first for safety)
+      - name: Publish to TestPyPI
+        if: startsWith(github.ref_name, 'v') && contains(github.ref_name, '-alpha')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          TWINE_REPOSITORY_URL: https://test.pypi.org/legacy/
+        run: |
+          python -m twine upload --verbose dist/*
+
+      # Publish to PyPI (Production)
+      - name: Publish to PyPI
+        if: startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-alpha') && !contains(github.ref_name, '-beta') && !contains(github.ref_name, '-rc')
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload --verbose dist/*
 
       # Create a GitHub release
       - name: Create GitHub Release
@@ -46,14 +76,34 @@ jobs:
           tag_name: ${{ github.ref_name }}
           body: |
             ${{ steps.changelog.outputs.changelog }}
+            
+            ## 📦 Installation
+            
+            ```bash
+            pip install v0rtex
+            ```
+            
+            ## 🔗 Links
+            
+            - [PyPI Package](https://pypi.org/project/v0rtex/)
+            - [Documentation](https://v0rtex.readthedocs.io)
+            - [Source Code](https://github.com/${{ github.repository }})
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # (Optional) Upload build artifacts to release
+      # Upload built package artifacts to release
       - name: Upload release artifacts
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/**
+            dist/*.whl
+            dist/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Clean up build artifacts
+      - name: Clean up
+        run: |
+          rm -rf dist/
+          rm -rf build/
+          rm -rf *.egg-info/
