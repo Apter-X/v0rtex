@@ -80,7 +80,7 @@ jobs:
         run: |
           python -m twine upload --verbose dist/*
 
-      # Create a GitHub release
+      # Create GitHub release with artifacts
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -100,13 +100,6 @@ jobs:
             - [PyPI Package](https://pypi.org/project/v0rtex/)
             - [Documentation](https://v0rtex.readthedocs.io)
             - [Source Code](https://github.com/${{ github.repository }})
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload built package artifacts to release
-      - name: Upload release artifacts
-        uses: softprops/action-gh-release@v2
-        with:
           files: |
             dist/*.whl
             dist/*.tar.gz
