@@ -1,0 +1,68 @@
+{
+  "name": "Basic Web Scraping Example",
+  "description": "Simple example for scraping a website",
+  "target_url": "https://example.com",
+  "method": "GET",
+  "headers": {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.5",
+    "Accept-Encoding": "gzip, deflate",
+    "Connection": "keep-alive"
+  },
+  "cookies": {},
+  "login_required": false,
+  "anti_detection_level": "medium",
+  "browser": {
+    "type": "undetected",
+    "headless": false,
+    "window_size": [1920, 1080],
+    "stealth_mode": true,
+    "fingerprint_spoofing": true
+  },
+  "proxy": null,
+  "vpn": {
+    "enabled": false,
+    "auto_rotate": false,
+    "rotation_interval": 300
+  },
+  "captcha": {
+    "enabled": true,
+    "auto_solve": true,
+    "services": ["2captcha", "anticaptcha"],
+    "api_keys": {
+      "2captcha": "YOUR_2CAPTCHA_API_KEY",
+      "anticaptcha": "YOUR_ANTICAPTCHA_API_KEY"
+    },
+    "timeout": 120,
+    "retry_attempts": 3
+  },
+  "rate_limit": {
+    "enabled": true,
+    "requests_per_minute": 60,
+    "delay_between_requests": 1.0,
+    "random_delay": true,
+    "delay_variance": 0.5
+  },
+  "selectors": {
+    "title": "h1",
+    "description": "p",
+    "links": "a[href]"
+  },
+  "wait_time": 2.0,
+  "max_retries": 3,
+  "timeout": 30,
+  "follow_redirects": true,
+  "verify_ssl": true,
+  "data_mapping": {
+    "page_title": "css:title",
+    "main_content": "css:main",
+    "navigation": "css:nav"
+  },
+  "output_format": "json",
+  "save_to_file": true,
+  "output_file": "scraped_data.json",
+  "custom_scripts": [],
+  "wait_for_elements": ["h1", "main"],
+  "scroll_behavior": null,
+  "screenshot_on_error": false
+}

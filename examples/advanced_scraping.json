@@ -1,0 +1,101 @@
+{
+  "name": "Advanced Web Scraping with Login",
+  "description": "Advanced example with login, anti-detection, and proxy support",
+  "target_url": "https://target-website.com/dashboard",
+  "method": "GET",
+  "headers": {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1"
+  },
+  "cookies": {},
+  "login_required": true,
+  "login_url": "https://target-website.com/login",
+  "login_credentials": {
+    "username": "your_username",
+    "password": "your_password"
+  },
+  "session_persistence": true,
+  "anti_detection_level": "high",
+  "browser": {
+    "type": "undetected",
+    "headless": false,
+    "user_agent": null,
+    "window_size": [1366, 768],
+    "disable_images": false,
+    "disable_javascript": false,
+    "disable_css": false,
+    "stealth_mode": true,
+    "fingerprint_spoofing": true
+  },
+  "proxy": {
+    "type": "socks5",
+    "host": "proxy.example.com",
+    "port": 1080,
+    "username": "proxy_user",
+    "password": "proxy_pass",
+    "country": "US"
+  },
+  "vpn": {
+    "enabled": true,
+    "provider": "openvpn",
+    "country": "US",
+    "auto_rotate": true,
+    "rotation_interval": 600
+  },
+  "captcha": {
+    "enabled": true,
+    "auto_solve": true,
+    "services": ["2captcha", "anticaptcha"],
+    "api_keys": {
+      "2captcha": "YOUR_2CAPTCHA_API_KEY",
+      "anticaptcha": "YOUR_ANTICAPTCHA_API_KEY"
+    },
+    "timeout": 180,
+    "retry_attempts": 5
+  },
+  "rate_limit": {
+    "enabled": true,
+    "requests_per_minute": 30,
+    "delay_between_requests": 2.0,
+    "random_delay": true,
+    "delay_variance": 1.0
+  },
+  "selectors": {
+    "user_info": ".user-profile .username",
+    "dashboard_items": ".dashboard-item",
+    "notifications": ".notification-list li",
+    "stats": ".stats-container .stat-value",
+    "recent_activity": ".activity-feed .activity-item"
+  },
+  "wait_time": 3.0,
+  "max_retries": 5,
+  "timeout": 45,
+  "follow_redirects": true,
+  "verify_ssl": true,
+  "data_mapping": {
+    "page_title": "css:title",
+    "user_profile": "css:.user-profile",
+    "dashboard_content": "css:.dashboard-content",
+    "navigation_menu": "css:.main-nav",
+    "footer_info": "css:.footer"
+  },
+  "output_format": "json",
+  "save_to_file": true,
+  "output_file": "advanced_scraped_data.json",
+  "custom_scripts": [
+    "window.scrollTo(0, document.body.scrollHeight);",
+    "setTimeout(() => {}, 2000);",
+    "document.querySelector('.load-more').click();"
+  ],
+  "wait_for_elements": [
+    ".dashboard-content",
+    ".user-profile",
+    ".stats-container"
+  ],
+  "scroll_behavior": "smooth",
+  "screenshot_on_error": true
+}
