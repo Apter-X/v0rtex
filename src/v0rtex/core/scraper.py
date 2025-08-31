@@ -24,6 +24,7 @@ from v0rtex.core.session import ScrapingSession
 from v0rtex.utils.anti_detection import AntiDetectionManager
 from v0rtex.utils.captcha_solver import CaptchaSolver
 from v0rtex.utils.vpn_manager import VPNManager
+from v0rtex.core.pagination import PaginationNavigator
 
 
 class V0rtexScraper:
@@ -44,6 +45,9 @@ class V0rtexScraper:
         self.driver = None
         self.current_page = None
         self.scraped_data = []
+        
+        # Pagination support
+        self.pagination_navigator: Optional[PaginationNavigator] = None
         
         # Initialize components
         self._setup_session()
@@ -446,7 +450,7 @@ class V0rtexScraper:
     
     def get_status(self) -> Dict[str, Any]:
         """Get scraper status."""
-        return {
+        status = {
             "config": self.config.model_dump(),
             "session": self.session.get_session_stats(),
             "anti_detection": self.anti_detection.get_fingerprint_stats(),
@@ -456,12 +460,204 @@ class V0rtexScraper:
             "current_page": self.current_page,
             "driver_active": self.driver is not None
         }
+        
+        # Add pagination status if available
+        if self.pagination_navigator:
+            status["pagination"] = self.pagination_navigator.get_pagination_info()
+        
+        return status
+    
+    def _initialize_pagination(self) -> bool:
+        """Initialize pagination if enabled."""
+        if not self.config.pagination.enabled:
+            logger.info("Pagination is disabled in configuration")
+            return False
+        
+        if not self.driver:
+            logger.error("Cannot initialize pagination without driver")
+            return False
+        
+        try:
+            self.pagination_navigator = PaginationNavigator(self.config.model_dump(), self.driver)
+            success = self.pagination_navigator.initialize()
+            
+            if success:
+                logger.info("Pagination initialized successfully")
+                return True
+            else:
+                logger.info("Pagination initialization failed - no pagination detected")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize pagination: {e}")
+            return False
+    
+    def scrape_with_pagination(self, data_extractor: Optional[callable] = None) -> List[Dict[str, Any]]:
+        """
+        Scrape data with pagination support.
+        
+        Args:
+            data_extractor: Optional function to extract data from each page.
+                          Should return the number of items found on the page.
+        
+        Returns:
+            List of scraped data from all pages
+        """
+        if not self.config.pagination.enabled:
+            logger.warning("Pagination is disabled, falling back to single page scraping")
+            return self.scrape()
+        
+        try:
+            logger.info("Starting pagination-aware scraping...")
+            
+            # Setup driver if not already done
+            if not self.driver:
+                self._setup_driver()
+            
+            # Navigate to target URL
+            self.driver.get(self.config.target_url)
+            time.sleep(self.config.wait_time)
+            
+            # Handle login if required
+            if self.config.login_required:
+                self._handle_login()
+            
+            # Initialize pagination
+            if not self._initialize_pagination():
+                logger.info("No pagination detected, scraping single page")
+                return self.scrape()
+            
+            # Start pagination loop
+            all_data = []
+            page_count = 0
+            
+            while self.pagination_navigator.can_continue():
+                page_count += 1
+                logger.info(f"Processing page {page_count}")
+                
+                try:
+                    # Extract data from current page
+                    if data_extractor:
+                        items_found = data_extractor(self.driver)
+                        logger.info(f"Extracted {items_found} items from page {page_count}")
+                    else:
+                        # Use default data extraction
+                        page_data = self._extract_data()
+                        items_found = len(page_data) if isinstance(page_data, list) else 1
+                        all_data.extend(page_data if isinstance(page_data, list) else [page_data])
+                        logger.info(f"Extracted {items_found} items from page {page_count}")
+                    
+                    # Check if we've reached item limit
+                    if self.config.pagination.limits.max_items and len(all_data) >= self.config.pagination.limits.max_items:
+                        logger.info(f"Reached maximum item limit: {self.config.pagination.limits.max_items}")
+                        break
+                    
+                    # Navigate to next page
+                    if not self.pagination_navigator.navigate_to_next(data_extractor):
+                        logger.info("Failed to navigate to next page, stopping pagination")
+                        break
+                    
+                    # Rate limiting between pages
+                    if self.config.rate_limit.enabled:
+                        delay = self.config.rate_limit.delay_between_requests
+                        if self.config.rate_limit.random_delay:
+                            delay += self.anti_detection.add_random_delay(
+                                delay, 
+                                self.config.rate_limit.delay_variance
+                            )
+                        time.sleep(delay)
+                    
+                except Exception as e:
+                    logger.error(f"Error processing page {page_count}: {e}")
+                    
+                    # Handle pagination error
+                    if self.pagination_navigator:
+                        if not self.pagination_navigator.handle_pagination_error(e, f"page_{page_count}"):
+                            logger.error("Too many pagination errors, stopping")
+                            break
+                    else:
+                        break
+            
+            logger.info(f"Pagination scraping completed. Processed {page_count} pages, extracted {len(all_data)} total items")
+            return all_data
+            
+        except Exception as e:
+            logger.error(f"Pagination scraping failed: {e}")
+            raise
+        
+        finally:
+            # Cleanup
+            if self.driver:
+                self.driver.quit()
+    
+    def get_pagination_status(self) -> Dict[str, Any]:
+        """Get detailed pagination status."""
+        if not self.pagination_navigator:
+            return {"status": "not_initialized", "message": "Pagination not initialized"}
+        
+        return self.pagination_navigator.get_pagination_info()
+    
+    def get_pagination_progress(self) -> Dict[str, Any]:
+        """Get pagination progress information."""
+        if not self.pagination_navigator:
+            return {"status": "not_initialized"}
+        
+        return self.pagination_navigator.get_progress()
+    
+    def save_pagination_state(self, file_path: str) -> bool:
+        """Save current pagination state to file."""
+        if not self.pagination_navigator:
+            logger.warning("Cannot save pagination state - pagination not initialized")
+            return False
+        
+        try:
+            from pathlib import Path
+            self.pagination_navigator.save_state(Path(file_path))
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save pagination state: {e}")
+            return False
+    
+    def load_pagination_state(self, file_path: str) -> bool:
+        """Load pagination state from file."""
+        if not self.pagination_navigator:
+            logger.warning("Cannot load pagination state - pagination not initialized")
+            return False
+        
+        try:
+            from pathlib import Path
+            return self.pagination_navigator.load_state(Path(file_path))
+        except Exception as e:
+            logger.error(f"Failed to load pagination state: {e}")
+            return False
+    
+    def reset_pagination(self) -> None:
+        """Reset pagination state."""
+        if self.pagination_navigator:
+            self.pagination_navigator.reset()
+            logger.info("Pagination state reset")
+    
+    def get_pagination_summary(self) -> str:
+        """Get human-readable pagination summary."""
+        if not self.pagination_navigator:
+            return "Pagination not initialized"
+        
+        return self.pagination_navigator.get_navigation_summary()
     
     def cleanup(self):
         """Cleanup resources."""
         try:
             if self.driver:
                 self.driver.quit()
+            
+            # Save pagination state if available
+            if self.pagination_navigator and self.config.pagination.enabled:
+                try:
+                    state_file = f"pagination_state_{int(time.time())}.json"
+                    self.save_pagination_state(state_file)
+                    logger.info(f"Pagination state saved to {state_file}")
+                except Exception as e:
+                    logger.warning(f"Failed to save pagination state: {e}")
             
             self.vpn_manager.stop_auto_rotation()
             

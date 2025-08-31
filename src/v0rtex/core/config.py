@@ -43,6 +43,14 @@ class AntiDetectionLevel(str, Enum):
     EXTREME = "extreme"
 
 
+class PaginationStrategy(str, Enum):
+    """Supported pagination strategies."""
+    AUTO = "auto"
+    URL = "url"
+    JAVASCRIPT = "javascript"
+    INFINITE_SCROLL = "infinite_scroll"
+
+
 class ProxyConfig(BaseModel):
     """Proxy configuration."""
     type: ProxyType
@@ -101,6 +109,50 @@ class RateLimitConfig(BaseModel):
     delay_variance: float = 0.5
 
 
+class PaginationSelectorsConfig(BaseModel):
+    """Pagination element selectors configuration."""
+    next_button: str = ".pagination .next, .pagination .next-page"
+    prev_button: str = ".pagination .prev, .pagination .prev-page"
+    page_numbers: str = ".pagination .page, .pagination a"
+    current_page: str = ".pagination .current, .pagination .active"
+    pagination_container: str = ".pagination, .pager, .page-navigation"
+
+
+class PaginationLimitsConfig(BaseModel):
+    """Pagination limits configuration."""
+    max_pages: int = 100
+    max_items: int = 1000
+    max_scrolls: int = 50  # For infinite scroll
+
+
+class PaginationNavigationConfig(BaseModel):
+    """Pagination navigation configuration."""
+    wait_time: float = 2.0
+    retry_attempts: int = 3
+    scroll_pause: float = 1.0
+    scroll_threshold: int = 100  # pixels from bottom
+
+
+class PaginationConfig(BaseModel):
+    """Pagination configuration."""
+    enabled: bool = False
+    strategy: PaginationStrategy = PaginationStrategy.AUTO
+    selectors: PaginationSelectorsConfig = Field(default_factory=PaginationSelectorsConfig)
+    limits: PaginationLimitsConfig = Field(default_factory=PaginationLimitsConfig)
+    navigation: PaginationNavigationConfig = Field(default_factory=PaginationNavigationConfig)
+    
+    # URL-based pagination specific
+    url_patterns: List[str] = Field(default_factory=lambda: [
+        r'[?&]page=(\d+)',
+        r'[?&]p=(\d+)',
+        r'[?&]pg=(\d+)',
+        r'[?&]pageno=(\d+)',
+        r'/page/(\d+)',
+        r'/p/(\d+)'
+    ])
+    page_param: str = "page"
+
+
 class ScrapingConfig(BaseModel):
     """Main scraping configuration."""
     
@@ -146,6 +198,9 @@ class ScrapingConfig(BaseModel):
     scroll_behavior: Optional[str] = None
     screenshot_on_error: bool = False
     
+    # Pagination support
+    pagination: PaginationConfig = Field(default_factory=PaginationConfig)
+    
     @validator('target_url')
     def validate_url(cls, v):
         """Validate target URL."""
@@ -181,7 +236,7 @@ class ScrapingConfig(BaseModel):
         if filepath.endswith('.json'):
             with open(filepath, 'w') as f:
                 f.write(self.to_json())
-        elif filepath.endswith(('.yml', '.yaml')):
+        elif filepath.endswith('.yml', '.yaml'):
             with open(filepath, 'w') as f:
                 f.write(self.to_yaml())
         else:
@@ -195,7 +250,7 @@ class ScrapingConfig(BaseModel):
         
         if filepath.endswith('.json'):
             return cls.from_json(content)
-        elif filepath.endswith(('.yml', '.yaml')):
+        elif filepath.endswith('.yml', '.yaml'):
             return cls.from_yaml(content)
         else:
             raise ValueError("File must have .json, .yml, or .yaml extension")

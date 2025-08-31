@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "v0rtex"
-version = "0.1.2-alpha.1"
+version = "0.2.2-alpha.1"
 description = "Dynamic JSON-based web scraper with anti-detection capabilities"
 readme = "README.md"
 license = {text = "MIT"}
@@ -79,10 +79,10 @@ proxy = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/your-org/v0rtex"
+Homepage = "https://github.com/Apter-X/v0rtex"
 Documentation = "https://v0rtex.readthedocs.io"
-Repository = "https://github.com/your-org/v0rtex"
-Issues = "https://github.com/your-org/v0rtex/issues"
+Repository = "https://github.com/Apter-X/v0rtex"
+Issues = "https://github.com/Apter-X/v0rtex/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

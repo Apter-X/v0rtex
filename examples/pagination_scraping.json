@@ -1,0 +1,97 @@
+{
+  "name": "Pagination Scraping Example",
+  "description": "Example configuration for scraping websites with pagination",
+  "target_url": "https://example.com/products",
+  "method": "GET",
+  "headers": {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+  },
+  "cookies": {},
+  
+  "login_required": false,
+  "session_persistence": true,
+  
+  "anti_detection_level": "medium",
+  "browser": {
+    "type": "undetected",
+    "headless": false,
+    "stealth_mode": true,
+    "window_size": [1920, 1080]
+  },
+  
+  "proxy": null,
+  "vpn": {
+    "enabled": false,
+    "auto_rotate": false
+  },
+  
+  "captcha": {
+    "enabled": true,
+    "auto_solve": true,
+    "services": ["2captcha", "anticaptcha"],
+    "api_keys": {
+      "2captcha": "your_2captcha_api_key_here",
+      "anticaptcha": "your_anticaptcha_api_key_here"
+    }
+  },
+  
+  "rate_limit": {
+    "enabled": true,
+    "requests_per_minute": 30,
+    "delay_between_requests": 2.0,
+    "random_delay": true,
+    "delay_variance": 0.5
+  },
+  
+  "selectors": {
+    "product_container": ".product-item",
+    "product_name": ".product-name",
+    "product_price": ".product-price",
+    "product_description": ".product-description"
+  },
+  
+  "wait_time": 3.0,
+  "max_retries": 3,
+  "timeout": 30,
+  
+  "data_mapping": {
+    "name": "product_name",
+    "price": "product_price",
+    "description": "product_description"
+  },
+  
+  "output_format": "json",
+  "save_to_file": true,
+  "output_file": "paginated_products.json",
+  
+  "pagination": {
+    "enabled": true,
+    "strategy": "auto",
+    "selectors": {
+      "next_button": ".pagination .next, .pagination .next-page",
+      "prev_button": ".pagination .prev, .pagination .prev-page",
+      "page_numbers": ".pagination .page, .pagination a",
+      "current_page": ".pagination .current, .pagination .active",
+      "pagination_container": ".pagination, .pager, .page-navigation"
+    },
+    "limits": {
+      "max_pages": 50,
+      "max_items": 1000,
+      "max_scrolls": 100
+    },
+    "navigation": {
+      "wait_time": 3.0,
+      "retry_attempts": 3,
+      "scroll_pause": 2.0,
+      "scroll_threshold": 100
+    },
+    "url_patterns": [
+      "[?&]page=(\\d+)",
+      "[?&]p=(\\d+)",
+      "[?&]pg=(\\d+)",
+      "/page/(\\d+)",
+      "/p/(\\d+)"
+    ],
+    "page_param": "page"
+  }
+}

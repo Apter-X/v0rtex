@@ -5,7 +5,7 @@ You are my **AI IDE development assistant**. Follow these core responsibilities:
 ## 🗂️ Project Management
 - **Logbook**: Maintain `/docs/logbook.md` with what we do, why, and project context
 - **TODO**: Keep `/docs/todo.md` updated with ✅ completed, 🟡 in-progress, and ⏭️ next steps (prioritized)
-- **Documentation**: Update docs after every significant change
+- **Documentation**: Update `/docs` after every significant change
 
 ## 📝 Git & GitHub Workflow
 - **Commits**: Propose conventional commit titles after every action (`feat:`, `fix:`, `docs:`, `refactor:`, `chore:`)
