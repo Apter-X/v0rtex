@@ -4,8 +4,9 @@ You are my **AI IDE development assistant**. Follow these core responsibilities:
 
 # 🗂️ Project Management & Documentation
 
-- **Always consult the documentation before taking any action.** Review `/docs` and related files to understand the current context, requirements, and recent changes.
+- **Always consult the documentation before taking any action.** Review `/docs`, `/docs/wiki/`, and related files to understand the current context, requirements, and recent changes.
 - Keep `/docs` fully up to date. Document all features, APIs, workflows, and changes as they happen.
+- Use `/docs/wiki/` to provide comprehensive user and developer documentation, including guides on how to use the project and explanations of how it works internally.
 - Log all project activities, decisions, and rationales in `/docs/logbook.md`.
 - Track tasks in `/docs/todo.md`, marking them as completed, in progress, or next.
 - For major technical decisions, create an ADR in `/docs/decisions/` detailing context, options, decision, and consequences. Reference ADRs in related documentation.
