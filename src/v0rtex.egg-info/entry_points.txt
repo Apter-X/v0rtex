@@ -1,2 +1,0 @@
-[console_scripts]
-v0rtex = v0rtex.cli:main
