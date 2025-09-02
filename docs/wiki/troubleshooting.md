@@ -753,3 +753,299 @@ tail -100 /var/log/v0rtex/v0rtex.log
 - [API Reference](api-reference.md) - API documentation
 - [Deployment Guide](deployment.md) - Deployment instructions
 - [Architecture Documentation](../architecture.md) - System architecture
+
+## 🚨 Common Issues and Solutions
+
+### Configuration Errors
+
+#### Invalid JSON Format
+**Problem**: Configuration file contains invalid JSON syntax
+**Symptoms**: 
+- Parser errors when loading configuration
+- Configuration not applied correctly
+- Scraper fails to start
+
+**Solutions**:
+1. Validate JSON syntax using online tools
+2. Remove any HTML content or non-JSON text
+3. Check for missing commas, brackets, or quotes
+4. Use proper JSON escaping for special characters
+
+**Example Fix**:
+```json
+// ❌ Invalid - contains HTML
+{
+  "name": "My Scraper",
+  "selectors": {
+    "title": "h1"
+  }
+}
+<div class="content">...</div>
+
+// ✅ Valid JSON
+{
+  "name": "My Scraper",
+  "selectors": {
+    "title": "h1"
+  }
+}
+```
+
+#### Pagination Configuration Issues
+
+**Problem**: Pagination not working or detecting pages incorrectly
+**Symptoms**:
+- Only first page is scraped
+- Pagination elements not found
+- Navigation between pages fails
+
+**Common Causes and Solutions**:
+
+1. **Wrong Pagination Strategy**
+   ```json
+   // ❌ Generic strategy may not work
+   "strategy": "auto"
+   
+   // ✅ Specific strategy for WooCommerce
+   "strategy": "url"
+   ```
+
+2. **Incorrect Selectors**
+   ```json
+   // ❌ Generic selectors
+   "selectors": {
+     "page_numbers": ".page-numbers"
+   }
+   
+   // ✅ Specific WooCommerce selectors
+   "selectors": {
+     "pagination_container": ".woocommerce-pagination",
+     "next_button": ".woocommerce-pagination .next",
+     "prev_button": ".woocommerce-pagination .prev",
+     "page_numbers": ".woocommerce-pagination .page-numbers",
+     "current_page": ".woocommerce-pagination .current"
+   }
+   ```
+
+3. **Missing URL Patterns**
+   ```json
+   // ❌ Missing or incorrect patterns
+   "url_patterns": ["[?&]page=(\\d+)"]
+   
+   // ✅ Complete pattern set for WooCommerce
+   "url_patterns": [
+     "/page/(\\d+)",
+     "[?&]page=(\\d+)",
+     "[?&]p=(\\d+)"
+   ]
+   ```
+
+**WooCommerce-Specific Pagination Fix**:
+```json
+{
+  "pagination": {
+    "enabled": true,
+    "strategy": "url",
+    "selectors": {
+      "pagination_container": ".woocommerce-pagination",
+      "next_button": ".woocommerce-pagination .next",
+      "prev_button": ".woocommerce-pagination .prev",
+      "page_numbers": ".woocommerce-pagination .page-numbers",
+      "current_page": ".woocommerce-pagination .current"
+    },
+    "url_patterns": [
+      "/page/(\\d+)",
+      "[?&]page=(\\d+)"
+    ],
+    "limits": {
+      "max_pages": 50,
+      "max_items": 1000
+    }
+  }
+}
+```
+
+#### Selector Mismatches
+
+**Problem**: CSS selectors don't match actual page elements
+**Symptoms**:
+- No data extracted
+- Empty results
+- Selector-related errors
+
+**Solutions**:
+1. **Inspect Page Source**: Use browser dev tools to verify element structure
+2. **Test Selectors**: Validate selectors in browser console
+3. **Use Specific Classes**: Target unique CSS classes rather than generic tags
+4. **Handle Dynamic Content**: Account for JavaScript-rendered elements
+
+**Example Selector Optimization**:
+```json
+// ❌ Generic selectors
+"selectors": {
+  "product_name": "h2",
+  "price": ".price"
+}
+
+// ✅ Specific selectors
+"selectors": {
+  "product_name": ".woocommerce-loop-product__title",
+  "price": ".woocommerce-Price-amount .amount bdi"
+}
+```
+
+### Performance Issues
+
+#### Slow Scraping
+**Problem**: Scraping takes too long or gets stuck
+**Symptoms**:
+- Long delays between pages
+- Timeout errors
+- Browser becomes unresponsive
+
+**Solutions**:
+1. **Adjust Wait Times**: Reduce unnecessary delays
+2. **Optimize Selectors**: Use more specific, efficient selectors
+3. **Enable Headless Mode**: Run browser in background
+4. **Implement Rate Limiting**: Respect server resources
+
+**Performance Configuration**:
+```json
+{
+  "browser": {
+    "headless": true,
+    "timeout": 30
+  },
+  "rate_limit": {
+    "enabled": true,
+    "requests_per_minute": 30,
+    "delay_between_requests": 2.0
+  },
+  "pagination": {
+    "navigation": {
+      "wait_time": 2.0,
+      "page_load_timeout": 20
+    }
+  }
+}
+```
+
+#### Memory Issues
+**Problem**: High memory usage during scraping
+**Symptoms**:
+- Browser crashes
+- System becomes slow
+- Out of memory errors
+
+**Solutions**:
+1. **Limit Page Count**: Set reasonable `max_pages` limits
+2. **Clear Browser Cache**: Implement cache clearing between pages
+3. **Use Headless Mode**: Reduce memory overhead
+4. **Monitor Resources**: Track memory usage during scraping
+
+### Anti-Detection Issues
+
+#### Bot Detection
+**Problem**: Website blocks or detects the scraper
+**Symptoms**:
+- CAPTCHA challenges
+- Access denied errors
+- IP blocking
+
+**Solutions**:
+1. **Enable Stealth Mode**: Use undetected browser
+2. **Rotate User Agents**: Vary browser signatures
+3. **Implement Delays**: Add random delays between requests
+4. **Use Proxies/VPN**: Rotate IP addresses
+
+**Anti-Detection Configuration**:
+```json
+{
+  "browser": {
+    "type": "undetected",
+    "stealth_mode": true
+  },
+  "anti_detection_level": "high",
+  "rate_limit": {
+    "enabled": true,
+    "random_delay": true,
+    "delay_variance": 1.0
+  }
+}
+```
+
+### Data Quality Issues
+
+#### Missing or Incomplete Data
+**Problem**: Not all expected data is extracted
+**Symptoms**:
+- Empty fields in results
+- Inconsistent data structure
+- Missing products or pages
+
+**Solutions**:
+1. **Verify Selectors**: Ensure selectors match current page structure
+2. **Handle Dynamic Content**: Wait for JavaScript to load
+3. **Implement Fallbacks**: Use multiple selector strategies
+4. **Validate Results**: Check data completeness
+
+**Data Validation Configuration**:
+```json
+{
+  "data_mapping": {
+    "name": "product_name",
+    "price": "product_price",
+    "category": "product_category"
+  },
+  "validation": {
+    "required_fields": ["name", "price"],
+    "min_data_quality": 0.8
+  }
+}
+```
+
+## 🔧 Debugging Techniques
+
+### Enable Verbose Logging
+```json
+{
+  "logging": {
+    "level": "DEBUG",
+    "console_output": true,
+    "file_output": true
+  }
+}
+```
+
+### Use Browser Developer Tools
+1. **Inspect Elements**: Verify selector accuracy
+2. **Console Testing**: Test selectors in browser console
+3. **Network Tab**: Monitor requests and responses
+4. **Performance Tab**: Identify bottlenecks
+
+### Test Configuration Incrementally
+1. **Start Simple**: Begin with basic configuration
+2. **Add Features**: Gradually enable advanced options
+3. **Validate Each Step**: Ensure each addition works
+4. **Document Changes**: Keep track of working configurations
+
+## 📚 Getting Help
+
+### Before Asking for Help
+1. **Check Documentation**: Review relevant guides and examples
+2. **Search Issues**: Look for similar problems in existing issues
+3. **Test Configuration**: Verify configuration syntax and logic
+4. **Gather Information**: Collect error messages and logs
+
+### When Reporting Issues
+1. **Configuration File**: Share your complete configuration
+2. **Error Messages**: Include full error logs and stack traces
+3. **Expected vs Actual**: Describe what you expected vs what happened
+4. **Environment Details**: Specify OS, Python version, and dependencies
+5. **Steps to Reproduce**: Provide clear reproduction steps
+
+### Community Resources
+- **GitHub Issues**: Report bugs and request features
+- **Discussions**: Ask questions and share solutions
+- **Examples**: Review working configuration examples
+- **Documentation**: Check comprehensive guides and references

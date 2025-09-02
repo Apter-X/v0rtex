@@ -121,6 +121,7 @@ class PaginationNavigator:
             self.state.mark_page_success(self.state.current_page, items_found)
             
             # Try to navigate to next page
+            logger.info(f"Attempting to navigate from page {self.state.current_page} to next page...")
             success = self._navigate_with_retry()
             
             if success:

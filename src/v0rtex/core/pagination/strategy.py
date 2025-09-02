@@ -85,37 +85,85 @@ class URLPaginationStrategy(PaginationStrategy):
         
         # Get current page number
         current_page = 1
+        path_pattern_matched = False
+        
+        # First check for path-based patterns (e.g., /page/2/)
         for pattern in self.url_patterns:
-            match = re.search(pattern, current_url)
-            if match:
-                current_page = int(match.group(1))
-                break
+            if pattern.startswith('/'):
+                match = re.search(pattern, current_url)
+                if match:
+                    current_page = int(match.group(1))
+                    path_pattern_matched = True
+                    break
+        
+        # If no path pattern matched, check query parameters
+        if not path_pattern_matched:
+            for pattern in self.url_patterns:
+                if not pattern.startswith('/'):
+                    match = re.search(pattern, current_url)
+                    if match:
+                        current_page = int(match.group(1))
+                        break
+        
+        # If no pattern matched at all, assume we're on page 1
+        # This handles cases where the first page doesn't have /page/1/ in the URL
+        if not path_pattern_matched and current_page == 1:
+            # For path-based pagination, we need to construct the first page URL
+            # to establish the pattern, then we can increment from there
+            pass
         
         # Create next page URL
         next_page = current_page + 1
-        query_params[self.page_param] = [str(next_page)]
         
-        # Rebuild URL
-        new_query = urlencode(query_params, doseq=True)
-        next_url = urlunparse((
-            parsed.scheme,
-            parsed.netloc,
-            parsed.path,
-            parsed.params,
-            new_query,
-            parsed.fragment
-        ))
+        if path_pattern_matched:
+            # Handle path-based pagination (e.g., /page/2/ -> /page/3/)
+            for pattern in self.url_patterns:
+                if pattern.startswith('/'):
+                    match = re.search(pattern, current_url)
+                    if match:
+                        # Replace the page number in the path
+                        next_url = re.sub(pattern, f'/page/{next_page}/', current_url)
+                        logger.info(f"Generated next page URL (path-based): {next_url}")
+                        return next_url
+        else:
+            # Handle query parameter pagination (e.g., ?page=2 -> ?page=3)
+            if current_page == 1 and not path_pattern_matched:
+                # We're on the first page with no pattern, need to construct the pattern
+                # For eShop Maroc, this would be adding /page/2/ to the base URL
+                base_url = current_url.rstrip('/')
+                if not base_url.endswith('/page/1'):
+                    # Add the page pattern to the base URL
+                    next_url = f"{base_url}/page/{next_page}/"
+                    logger.info(f"Generated next page URL (first page pattern): {next_url}")
+                    return next_url
+            
+            # Standard query parameter handling
+            query_params[self.page_param] = [str(next_page)]
+            new_query = urlencode(query_params, doseq=True)
+            next_url = urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
+            logger.info(f"Generated next page URL (query-based): {next_url}")
+            return next_url
         
-        logger.info(f"Generated next page URL: {next_url}")
-        return next_url
+        return None
     
     def navigate_to_next(self, driver: WebDriver) -> bool:
         """Navigate to the next page by changing the URL."""
         try:
             current_url = driver.current_url
+            logger.info(f"Current URL: {current_url}")
+            
             next_url = self.get_next_page(driver, current_url)
+            logger.info(f"Generated next URL: {next_url}")
             
             if next_url:
+                logger.info(f"Navigating to: {next_url}")
                 driver.get(next_url)
                 time.sleep(self.wait_time)
                 
@@ -126,6 +174,8 @@ class URLPaginationStrategy(PaginationStrategy):
                 
                 logger.info(f"Successfully navigated to next page: {next_url}")
                 return True
+            else:
+                logger.warning("No next URL generated")
             
         except Exception as e:
             logger.error(f"Failed to navigate to next page: {e}")

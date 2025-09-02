@@ -92,7 +92,14 @@ def run_scraper(config: ScrapingConfig, output_file: Optional[str] = None) -> bo
         
         # Run scraping
         logger.info("Starting scraping process...")
-        results = scraper.scrape()
+        
+        # Check if pagination is enabled
+        if config.pagination.enabled:
+            logger.info("Pagination enabled - using pagination-aware scraping")
+            results = scraper.scrape_with_pagination()
+        else:
+            logger.info("Pagination disabled - using single page scraping")
+            results = scraper.scrape()
         
         # Save results if output file specified
         if output_file:
