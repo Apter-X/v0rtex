@@ -275,74 +275,158 @@ class V0rtexScraper:
             logger.error(f"CAPTCHA handling failed: {e}")
             return False
     
-    def _extract_data(self) -> Dict[str, Any]:
+    def _extract_data(self) -> List[Dict[str, Any]]:
         """Extract data from current page based on configuration."""
         try:
-            data = {}
-            
             # Get page source
             page_source = self.driver.page_source
             soup = BeautifulSoup(page_source, 'html.parser')
             
-            # Extract data using selectors
-            for field_name, selector in self.config.selectors.items():
-                try:
-                    elements = soup.select(selector)
-                    if elements:
-                        if len(elements) == 1:
-                            data[field_name] = elements[0].get_text(strip=True)
+            # Find the container that holds individual products
+            # For WooCommerce, this is typically .product-inner or .product-item
+            product_containers = soup.select('.product-inner, .product-item, .woocommerce-loop-product, .product')
+            
+            if not product_containers:
+                # Fallback: try to find products by looking for product titles
+                product_titles = soup.select(self.config.selectors.get('product_name', '.woocommerce-loop-product__title'))
+                if product_titles:
+                    # Find the closest product container for each title
+                    product_containers = []
+                    for title in product_titles:
+                        # Look for the closest parent that looks like a product container
+                        parent = title.parent
+                        while parent and parent.name != 'body':
+                            if parent.get('class') and any('product' in cls.lower() for cls in parent.get('class', [])):
+                                product_containers.append(parent)
+                                break
+                            parent = parent.parent
                         else:
-                            data[field_name] = [elem.get_text(strip=True) for elem in elements]
-                    else:
-                        data[field_name] = None
-                except Exception as e:
-                    logger.warning(f"Failed to extract field {field_name}: {e}")
-                    data[field_name] = None
+                            # If no product container found, use the title's immediate parent
+                            if title.parent:
+                                product_containers.append(title.parent)
             
-            # Extract data using data mapping
-            for field_name, mapping in self.config.data_mapping.items():
-                try:
-                    if mapping.startswith("css:"):
-                        selector = mapping[4:]
-                        elements = soup.select(selector)
+            if not product_containers:
+                # If still no containers found, try to find any element with product-related classes
+                product_containers = soup.select('[class*="product"], [class*="item"]')
+                # Filter to only include elements that might be product containers
+                product_containers = [container for container in product_containers 
+                                   if container.name in ['div', 'article', 'li'] and 
+                                   len(container.select('.woocommerce-loop-product__title')) > 0]
+            
+            if not product_containers:
+                # Last resort: treat the whole page as one product
+                logger.warning("No product containers found, treating page as single product")
+                product_containers = [soup]
+            
+            products_data = []
+            logger.info(f"Found {len(product_containers)} product containers")
+            
+            # Debug: Log the HTML structure of the first container
+            if product_containers and len(product_containers) > 0:
+                first_container = product_containers[0]
+                logger.debug(f"First container HTML structure: {first_container.prettify()[:500]}...")
+            
+            for i, container in enumerate(product_containers):
+                product_data = {}
+                logger.debug(f"Processing product container {i+1}")
+                
+                # Extract data for each product using selectors
+                for field_name, selector in self.config.selectors.items():
+                    try:
+                        # Search within the product container
+                        elements = container.select(selector)
+                        logger.debug(f"Field '{field_name}' with selector '{selector}': found {len(elements)} elements")
+                        
                         if elements:
-                            data[field_name] = elements[0].get_text(strip=True)
-                    elif mapping.startswith("xpath:"):
-                        # XPath extraction would need lxml
-                        pass
-                    else:
-                        # Direct attribute mapping
-                        data[field_name] = mapping
-                except Exception as e:
-                    logger.warning(f"Failed to extract mapped field {field_name}: {e}")
-                    data[field_name] = None
+                            # Always take the first element found within this product container
+                            # This ensures we get data specific to this product, not all products on the page
+                            element_text = elements[0].get_text(strip=True)
+                            
+                            # Clean up the text - remove extra whitespace and normalize
+                            if element_text:
+                                element_text = ' '.join(element_text.split())
+                                product_data[field_name] = element_text
+                                logger.debug(f"Extracted '{field_name}': '{element_text[:100]}...'")
+                            else:
+                                product_data[field_name] = None
+                                logger.debug(f"Field '{field_name}' has empty text")
+                        else:
+                            product_data[field_name] = None
+                            logger.debug(f"Field '{field_name}' not found with selector '{selector}'")
+                    except Exception as e:
+                        logger.warning(f"Failed to extract field {field_name} for product {i}: {e}")
+                        product_data[field_name] = None
+                
+                # Apply data mapping - this should override the selector-based extraction
+                for field_name, mapping in self.config.data_mapping.items():
+                    try:
+                        if mapping.startswith("css:"):
+                            # CSS selector mapping
+                            selector = mapping[4:]
+                            elements = container.select(selector)
+                            if elements:
+                                element_text = elements[0].get_text(strip=True)
+                                product_data[field_name] = ' '.join(element_text.split()) if element_text else None
+                        elif mapping.startswith("xpath:"):
+                            # XPath extraction would need lxml
+                            pass
+                        else:
+                            # Direct field mapping - map from selector field to mapped field
+                            if mapping in product_data:
+                                product_data[field_name] = product_data[mapping]
+                            else:
+                                # If the mapped field doesn't exist, try to find it
+                                logger.warning(f"Mapped field '{mapping}' not found in selectors for '{field_name}'")
+                    except Exception as e:
+                        logger.warning(f"Failed to extract mapped field {field_name} for product {i}: {e}")
+                        product_data[field_name] = None
+                
+                # Add metadata
+                product_data["_metadata"] = {
+                    "url": self.driver.current_url,
+                    "timestamp": time.time(),
+                    "user_agent": self.driver.execute_script("return navigator.userAgent;"),
+                    "ip": self.vpn_manager.get_current_ip(),
+                    "product_index": i
+                }
+                
+                logger.debug(f"Product {i+1} data: {product_data}")
+                products_data.append(product_data)
             
-            # Add metadata
-            data["_metadata"] = {
-                "url": self.driver.current_url,
-                "timestamp": time.time(),
-                "user_agent": self.driver.execute_script("return navigator.userAgent;"),
-                "ip": self.vpn_manager.get_current_ip()
-            }
-            
-            return data
+            return products_data
             
         except Exception as e:
             logger.error(f"Data extraction failed: {e}")
-            return {}
+            return []
     
-    def _save_data(self, data: Dict[str, Any]):
+    def _save_data(self, data: List[Dict[str, Any]]):
         """Save extracted data."""
         try:
-            self.scraped_data.append(data)
+            if not data:
+                logger.warning("No data to save")
+                return
+            
+            # Check if this is a final save (all data at once) or incremental save
+            if len(data) > len(self.scraped_data) * 2:
+                # This looks like a final save with all collected data
+                logger.info("Detected final save - replacing scraped data")
+                self.scraped_data = data
+            else:
+                # This is an incremental save - extend existing data
+                self.scraped_data.extend(data)
             
             if self.config.save_to_file:
                 output_file = self.config.output_file or f"scraped_data_{int(time.time())}.json"
                 
+                # Ensure the output directory exists
+                output_dir = os.path.dirname(output_file)
+                if output_dir and not os.path.exists(output_dir):
+                    os.makedirs(output_dir)
+                
                 with open(output_file, 'w', encoding='utf-8') as f:
                     json.dump(self.scraped_data, f, indent=2, ensure_ascii=False)
                 
-                logger.info(f"Data saved to {output_file}")
+                logger.info(f"Data saved to {output_file} - Total products: {len(self.scraped_data)}")
             
         except Exception as e:
             logger.error(f"Data saving failed: {e}")
@@ -389,12 +473,12 @@ class V0rtexScraper:
                         logger.warning(f"Custom script failed: {e}")
             
             # Extract data
-            data = self._extract_data()
+            products_data = self._extract_data()
             
             # Save data
-            self._save_data(data)
+            self._save_data(products_data)
             
-            logger.info("Scraping completed successfully")
+            logger.info(f"Scraping completed successfully - Extracted {len(products_data)} products")
             return self.scraped_data
             
         except Exception as e:
@@ -542,10 +626,22 @@ class V0rtexScraper:
                         logger.info(f"Extracted {items_found} items from page {page_count}")
                     else:
                         # Use default data extraction
+                        logger.info(f"Extracting data from page {page_count}...")
                         page_data = self._extract_data()
+                        logger.info(f"Raw page data type: {type(page_data)}, length: {len(page_data) if isinstance(page_data, list) else 'N/A'}")
+                        
                         items_found = len(page_data) if isinstance(page_data, list) else 1
+                        
+                        # Save data from current page immediately
+                        if page_data:
+                            logger.info(f"Attempting to save {len(page_data)} items from page {page_count}")
+                            self._save_data(page_data)
+                            logger.info(f"Successfully saved {len(page_data)} items from page {page_count}")
+                        else:
+                            logger.warning(f"No data extracted from page {page_count}")
+                        
                         all_data.extend(page_data if isinstance(page_data, list) else [page_data])
-                        logger.info(f"Extracted {items_found} items from page {page_count}")
+                        logger.info(f"Extracted {items_found} items from page {page_count}, total so far: {len(all_data)}")
                     
                     # Check if we've reached item limit
                     if self.config.pagination.limits.max_items and len(all_data) >= self.config.pagination.limits.max_items:
@@ -579,6 +675,28 @@ class V0rtexScraper:
                         break
             
             logger.info(f"Pagination scraping completed. Processed {page_count} pages, extracted {len(all_data)} total items")
+            
+            # Debug: Log the structure of collected data
+            if all_data:
+                logger.info(f"Sample of collected data structure:")
+                if len(all_data) > 0:
+                    sample = all_data[0]
+                    logger.info(f"First item keys: {list(sample.keys()) if isinstance(sample, dict) else 'Not a dict'}")
+                    logger.info(f"First item type: {type(sample)}")
+                    if isinstance(sample, dict):
+                        for key, value in sample.items():
+                            if key != '_metadata':
+                                logger.info(f"  {key}: {type(value)} - {str(value)[:100] if value else 'None'}...")
+            
+            # Final save to ensure all data is written to file
+            if all_data and self.config.save_to_file:
+                logger.info(f"Final save: Writing {len(all_data)} total items to file")
+                # Clear existing data and save all collected data
+                self.scraped_data = all_data
+                self._save_data(all_data)
+            else:
+                logger.warning(f"No data to save or save_to_file is disabled. all_data: {len(all_data)}, save_to_file: {self.config.save_to_file}")
+            
             return all_data
             
         except Exception as e:

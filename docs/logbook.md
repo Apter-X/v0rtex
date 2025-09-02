@@ -879,10 +879,20 @@ The project now includes a complete CI/CD pipeline for automated package publish
 - **Impact**: All products were merged into single arrays, making data unusable
 - **Solution**: Completely rewrote data extraction to create individual product objects for each item
 
-#### 6. **CLI Not Using Pagination Method**
+#### 6. **Product Container Detection Issues**
+- **Problem**: The scraper couldn't properly identify individual product containers on WooCommerce pages
+- **Impact**: Data extraction was treating the entire page as one product, causing data corruption
+- **Solution**: Improved product container detection with multiple fallback strategies and better HTML parsing
+
+#### 7. **CLI Not Using Pagination Method**
 - **Problem**: CLI was calling `scrape()` instead of `scrape_with_pagination()` even when pagination was enabled
 - **Impact**: Pagination configuration was ignored, only first page was scraped
 - **Solution**: Updated CLI to automatically use pagination-aware scraping when enabled
+
+#### 8. **Data Not Saved During Pagination**
+- **Problem**: The `scrape_with_pagination()` method was collecting data in memory but never calling `_save_data()` to write to files
+- **Impact**: Data was extracted and pagination worked, but no JSON files were created
+- **Solution**: Added immediate data saving after each page extraction and final save at the end
 
 ### 🛠️ Technical Fixes Applied
 
@@ -942,8 +952,21 @@ The data extraction now creates individual product objects instead of arrays:
 
 ```python
 def _extract_data(self) -> List[Dict[str, Any]]:
-    # Find individual product containers
-    product_containers = soup.select('.product, .product-item, .woocommerce-loop-product')
+    # Find individual product containers with improved detection
+    product_containers = soup.select('.product-inner, .product-item, .woocommerce-loop-product, .product')
+    
+    if not product_containers:
+        # Fallback: find products by looking for product titles
+        product_titles = soup.select('.woocommerce-loop-product__title')
+        if product_titles:
+            # Find the closest product container for each title
+            for title in product_titles:
+                parent = title.parent
+                while parent and parent.name != 'body':
+                    if parent.get('class') and any('product' in cls.lower() for cls in parent.get('class', [])):
+                        product_containers.append(parent)
+                        break
+                    parent = parent.parent
     
     products_data = []
     for i, container in enumerate(product_containers):
@@ -953,7 +976,13 @@ def _extract_data(self) -> List[Dict[str, Any]]:
         for field_name, selector in self.config.selectors.items():
             elements = container.select(selector)
             if elements:
-                product_data[field_name] = elements[0].get_text(strip=True)
+                # Always take the first element found within this product container
+                element_text = elements[0].get_text(strip=True)
+                if element_text:
+                    element_text = ' '.join(element_text.split())  # Clean whitespace
+                    product_data[field_name] = element_text
+                else:
+                    product_data[field_name] = None
             else:
                 product_data[field_name] = None
         
@@ -964,6 +993,51 @@ def _extract_data(self) -> List[Dict[str, Any]]:
     
     return products_data
 ```
+
+#### Improved Product Container Detection
+The new logic uses multiple strategies to find product containers:
+
+1. **Primary Selectors**: `.product-inner`, `.product-item`, `.woocommerce-loop-product`
+2. **Title-Based Fallback**: Find product titles and trace back to their containers
+3. **Class Pattern Matching**: Look for elements with "product" in their class names
+4. **Container Validation**: Ensure containers actually contain product titles
+
+#### Fixed Data Saving in Pagination
+The pagination method now properly saves data after each page:
+
+```python
+def scrape_with_pagination(self, data_extractor: Optional[callable] = None):
+    # ... pagination setup ...
+    
+    while self.pagination_navigator.can_continue():
+        page_count += 1
+        
+        # Extract data from current page
+        page_data = self._extract_data()
+        
+        # Save data from current page immediately
+        if page_data:
+            self._save_data(page_data)
+            logger.info(f"Saved {len(page_data)} items from page {page_count}")
+        
+        all_data.extend(page_data)
+        
+        # Navigate to next page
+        # ... navigation logic ...
+    
+    # Final save to ensure all data is written to file
+    if all_data and self.config.save_to_file:
+        self.scraped_data = all_data
+        self._save_data(all_data)
+    
+    return all_data
+```
+
+**Key Changes:**
+- **Immediate Saving**: Data is saved after each page extraction
+- **Final Save**: Complete dataset is saved at the end
+- **Directory Creation**: Output directories are created automatically
+- **Smart Detection**: Distinguishes between incremental and final saves
 
 #### Enhanced Product Selectors
 ```json
@@ -1061,8 +1135,14 @@ def _extract_data(self) -> List[Dict[str, Any]]:
 # Test with the fixed configuration
 python -m v0rtex -c examples/pagination_test_fixed.json
 
+# Test with simplified configuration (recommended for debugging)
+python -m v0rtex -c examples/pagination_test_simple.json
+
+# Test with minimal configuration (for data saving verification)
+python -m v0rtex -c examples/pagination_test_minimal.json
+
 # Or run directly
-python src/__main__.py -c examples/pagination_test_fixed.json
+python src/__main__.py -c examples/pagination_test_minimal.json
 ```
 
 #### Expected Results
@@ -1070,6 +1150,10 @@ python src/__main__.py -c examples/pagination_test_fixed.json
 - **Individual Products**: Each product should be a separate JSON object
 - **Clean Data**: No more merged arrays or duplicate data
 - **Proper URLs**: Should see navigation to `/page/2/`, `/page/3/`, etc.
+- **Structured Output**: Each product should have clean, individual fields (name, price, category)
+- **No Data Corruption**: Product information should not be concatenated or merged
+- **Data Files Created**: JSON files should be generated in the specified output directory
+- **Incremental Saving**: Data should be saved after each page (check file timestamps)
 
 #### Future Improvements
 1. **Category Scraping**: Add support for category-level navigation
