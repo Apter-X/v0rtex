@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "v0rtex"
-version = "0.2.4-alpha.1"
+version = "0.2.4-alpha.2"
 description = "Dynamic JSON-based web scraper with anti-detection capabilities"
 readme = "README.md"
 license = {text = "MIT"}
